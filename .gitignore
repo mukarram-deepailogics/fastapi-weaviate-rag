@@ -1,0 +1,23 @@
+ECHO is on.
+# 🔹 Ignore Firebase service account key (VERY IMPORTANT)
+serviceAccountKey.json
+
+# 🔹 Ignore environment variables
+.env
+
+# 🔹 Ignore virtual environments
+venv/
+.venv/
+
+# 🔹 Ignore compiled Python files
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# 🔹 Ignore system files (Windows/macOS)
+.DS_Store
+Thumbs.db
+
+# 🔹 Ignore logs and cache
+*.log
