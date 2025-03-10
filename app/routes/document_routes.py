@@ -1,5 +1,5 @@
 from fastapi import APIRouter, HTTPException, Query
-from app.models import Document
+from app.models.document_model import Document
 from app.services.document_service import add_document,doc_by_id,limit_docs
 
 router = APIRouter()

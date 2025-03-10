@@ -1,10 +1,11 @@
 from fastapi import FastAPI
 from config import db
-from app.routes import document_routes
+from app.routes import document_routes,questions_routes
 
 app = FastAPI()
 
 app.include_router(document_routes.router)
+app.include_router(questions_routes.router)
 
 #@app.get("/testing-firestore")
 #def test_firestore():

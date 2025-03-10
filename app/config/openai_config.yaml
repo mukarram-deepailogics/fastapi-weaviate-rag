@@ -1,0 +1,6 @@
+openai:
+  model: "gpt-4o-mini"
+  temperature: 0.7
+  messages:
+    - role: "system"
+      content: "You are an AI assistant that provides helpful and concise answers based on the user's question."

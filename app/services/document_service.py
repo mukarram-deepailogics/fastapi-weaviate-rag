@@ -1,8 +1,15 @@
 from config import db
+from google.cloud import firestore
 
-def add_document(content:str):
-        doc_ref = db.collection("documents").add({"content": content})
-        return {"id": doc_ref[1].id, "content": content}
+def add_document(content: str):
+    document_data = {
+        "content": content,
+        "timestamp": firestore.SERVER_TIMESTAMP,
+    }
+    doc_ref = db.collection("documents").document()
+    doc_ref.set(document_data)
+
+    return {"id": doc_ref.id, "content": content}
     
 def doc_by_id(document_id: str):
         doc_ref = db.collection("documents").document(document_id)
