@@ -8,7 +8,7 @@ def ask_openai(question: str) -> str:
     try:
         messages = config["openai"]["messages"].copy()
         messages.append({"role": "user", "content": question})
-
+        
         response = client.chat.completions.create(
             model=config["openai"]["model"],
             messages=messages,
