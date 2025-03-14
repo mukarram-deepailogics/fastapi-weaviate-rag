@@ -6,3 +6,4 @@ pydantic
 openai
 pyyaml
 weaviate-client
+langchain
