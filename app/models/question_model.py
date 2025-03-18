@@ -1,4 +1,6 @@
+# app/models/question_model.py
 from pydantic import BaseModel
 
-class QuestionRequest(BaseModel):
+class QueryWeaviateRequest(BaseModel):
     question: str
+    document_id: str = None

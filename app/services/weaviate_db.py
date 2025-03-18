@@ -1,76 +1,77 @@
 import weaviate
 import os
-from weaviate.auth import AuthApiKey
-from weaviate.classes.config import DataType, Property, Configure, VectorDistances
-from app.services.utils import chunk_document
+import sys
 import uuid
 import hashlib
+from weaviate.auth import AuthApiKey
+from weaviate.classes.config import DataType, Property, Configure, VectorDistances
 
-wcd_url = os.getenv("WCD_URL")
-wcd_api_key = os.getenv("WCD_API_KEY")
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
+from app.services.utils import chunk_document  # ✅ Import chunking function
 
-client = weaviate.connect_to_weaviate_cloud(
-    cluster_url=wcd_url,
-    auth_credentials=AuthApiKey(wcd_api_key),
-)
+# Environment variables
+WCD_URL = os.getenv("WCD_URL")
+WCD_API_KEY = os.getenv("WCD_API_KEY")
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
 def create_weaviate_schema():
+    """Create DocumentChunk class with proper schema if it doesn't exist"""
     class_name = "DocumentChunk"
 
-    try:
+    with weaviate.connect_to_weaviate_cloud(
+        cluster_url=WCD_URL,
+        auth_credentials=AuthApiKey(WCD_API_KEY),
+        headers={"X-OpenAI-Api-Key": OPENAI_API_KEY},
+    ) as client:
         if client.collections.exists(class_name):
-            print(f"Class '{class_name}' already exists in Weaviate.")
+            print(f"Class {class_name} already exists")
             return
 
         client.collections.create(
             name=class_name,
             properties=[
                 Property(name="content", data_type=DataType.TEXT),
-                Property(name="chunk_index", data_type=DataType.INT),
-                Property(name="page_number", data_type=DataType.INT),
-                Property(name="document_id", data_type=DataType.TEXT, index_inverted=False)
+                Property(name="chunk_index", data_type=DataType.INT, index_inverted=False),
+                Property(name="page_number", data_type=DataType.INT, index_inverted=False),
+                Property(name="document_id", data_type=DataType.TEXT, index_inverted=False),
             ],
-            vectorizer_config=None,  # No auto-vectorization
+            vectorizer_config=Configure.Vectorizer.text2vec_openai(),
             vector_index_config=Configure.VectorIndex.hnsw(
-                distance_metric=VectorDistances.COSINE
-            )
+                distance_metric=VectorDistances.COSINE  # ✅ Correct way to set distance
+            ),
         )
+        print(f"Created {class_name} class")
 
-        print(f"Class '{class_name}' created successfully.")
-
-    except Exception as e:
-        print(f"Error while creating schema: {e}")
-
-#if __name__ == "__main__":
-#    create_weaviate_schema()
-#    client.close()
-
-def generate_uuid_from_id(document_id: str, chunk_index: int) -> str:
-    """Generate a UUID based on Firestore document ID and chunk index."""
+def generate_chunk_id(document_id: str, chunk_index: int) -> str:
+    """Generate deterministic UUID for chunk"""
     unique_str = f"{document_id}_{chunk_index}"
     return str(uuid.UUID(hashlib.md5(unique_str.encode()).hexdigest()))
-    
-def insert_chunks_into_weaviate(document_content: str, document_id: str, chunk_size: int, overlap: int):
-    create_weaviate_schema()
-    
-    chunks = chunk_document(document_content, chunk_size, overlap)
-    
-    if not chunks:
-        print("No chunks generated.")
-        return
 
-    collection = client.collections.get("DocumentChunk")
-
-    for i, chunk in enumerate(chunks):
-        chunk["document_id"] = document_id
+def insert_chunks_into_weaviate(content: str, document_id: str, chunk_size: int, overlap: int):
+    """Insert document chunks into Weaviate"""
+    chunks = chunk_document(content, chunk_size, overlap)  # ✅ Use function from utils
+    
+    with weaviate.connect_to_weaviate_cloud(
+        cluster_url=WCD_URL,
+        auth_credentials=AuthApiKey(WCD_API_KEY),
+        headers={"X-OpenAI-Api-Key": OPENAI_API_KEY}
+    ) as client:
+        collection = client.collections.get("DocumentChunk")
         
-        print(f"Inserting chunk {i}: {chunk}")
-
-        try:
+        for idx, chunk in enumerate(chunks):
+            chunk_data = {
+                "content": chunk["content"],  # ✅ Fix key name (not "text")
+                "chunk_index": idx,
+                "page_number": chunk.get("page_number", 0),
+                "document_id": document_id
+            }
+            
             collection.data.insert(
-                properties=chunk,
-                uuid=generate_uuid_from_id(document_id, i)
+                properties=chunk_data,
+                uuid=generate_chunk_id(document_id, idx)
             )
-        except Exception as e:
-            print(f"Error inserting chunk {i}: {e}")
-            raise e
+        print(chunk_data)
+if __name__ == "__main__":
+    # Uncomment the function you want to execute
+    # delete_weaviate_schema()  # First delete the existing schema
+    create_weaviate_schema()  # Then create a new schema

@@ -6,6 +6,7 @@ app = FastAPI()
 
 app.include_router(document_routes.router)
 app.include_router(questions_routes.router)
+app.include_router(questions_routes.router)
 
 #@app.get("/testing-firestore")
 #def test_firestore():
