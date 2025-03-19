@@ -8,7 +8,7 @@ def call_llm(prompt: str) -> str:
     """Calls OpenAI's GPT model with the given prompt"""
     try:
         response = client.chat.completions.create(
-            model="gpt-4",
+            model="gpt-4o-mini",
             messages=[
                 {"role": "system", "content": "You are a helpful assistant that answers questions based on the provided context."},
                 {"role": "user", "content": prompt}

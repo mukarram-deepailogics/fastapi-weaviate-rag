@@ -15,7 +15,6 @@ WCD_API_KEY = os.getenv("WCD_API_KEY")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
 def create_weaviate_schema():
-    """Create DocumentChunk class with proper schema if it doesn't exist"""
     class_name = "DocumentChunk"
 
     with weaviate.connect_to_weaviate_cloud(
@@ -72,6 +71,4 @@ def insert_chunks_into_weaviate(content: str, document_id: str, chunk_size: int,
             )
         print(chunk_data)
 if __name__ == "__main__":
-    # Uncomment the function you want to execute
-    # delete_weaviate_schema()  # First delete the existing schema
-    create_weaviate_schema()  # Then create a new schema
+    create_weaviate_schema()

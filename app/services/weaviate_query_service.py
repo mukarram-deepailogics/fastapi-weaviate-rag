@@ -1,21 +1,40 @@
-import os 
+import os
 import weaviate
 from weaviate.auth import AuthApiKey
-from weaviate.classes.query import Filter  
+from weaviate.classes.query import Filter
+from weaviate.exceptions import WeaviateBaseError
+
+class WeaviateConnectionError(Exception):
+    pass
+
+class NoResultsFoundError(Exception):
+    pass
 
 def query_weaviate(question: str, document_id: str = None):
-    """Queries Weaviate for relevant document chunks with certainty scores"""
-    client = weaviate.connect_to_weaviate_cloud(
-        cluster_url=os.getenv("WCD_URL"),
-        auth_credentials=AuthApiKey(os.getenv("WCD_API_KEY")),
-        headers={"X-OpenAI-Api-Key": os.getenv("OPENAI_API_KEY")}
-    )
+    
+
+    WCD_URL = os.getenv("WCD_URL")
+    WCD_API_KEY = os.getenv("WCD_API_KEY")
+    OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+
+    if not WCD_URL or not WCD_API_KEY:
+        raise WeaviateConnectionError("Missing Weaviate cloud credentials. Check environment variables.")
 
     try:
-        collection = client.collections.get("DocumentChunk")
 
-        print("🔍 Querying Weaviate with question:", question)
-        print("🔍 Using document_id filter:", document_id)
+        client = weaviate.connect_to_weaviate_cloud(
+            cluster_url=WCD_URL,
+            auth_credentials=AuthApiKey(WCD_API_KEY),
+            headers={"X-OpenAI-Api-Key": OPENAI_API_KEY}
+        )
+
+        if not client.is_ready():
+            raise WeaviateConnectionError("Failed to connect to Weaviate. Check your API key or server status.")
+
+        collection = client.collections.get("DocumentChunk")
+        
+        print("Querying Weaviate with question : ", question)
+        print("Using document_id filter : ", document_id)
 
         filters = None
         if document_id:
@@ -29,10 +48,8 @@ def query_weaviate(question: str, document_id: str = None):
             filters=filters  
         ).objects  
 
-        print("🔍 Raw Query Results from Weaviate:", query_results)
-
         if not query_results:
-            print("⚠️ No results found. Weaviate might not be indexing properly.")
+            raise NoResultsFoundError("No relevant information found in the documents.")
 
         formatted_results = []
         for obj in query_results:
@@ -46,10 +63,14 @@ def query_weaviate(question: str, document_id: str = None):
                 "certainty": metadata.certainty if metadata else None
             })
 
-        print("✅ Formatted Results:", formatted_results)
+        print("Formatted Results:", formatted_results)
         return formatted_results
 
+    except WeaviateBaseError as e:
+        raise WeaviateConnectionError(f"Weaviate connection error: {str(e)}")
+
     except Exception as e:
-        raise RuntimeError(f"Weaviate query error: {str(e)}")
+        raise RuntimeError(f"Unexpected Weaviate query error: {str(e)}")
+
     finally:
         client.close()
